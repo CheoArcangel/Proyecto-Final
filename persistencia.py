@@ -1,59 +1,43 @@
-"""
-Guarda y carga productos desde el disco local.
-"""
+import sqlite3
 
-import json
-import os
-from datetime import datetime
+# Nombre del archivo de la base de datos
+DB_NAME = 'inventario.db'
 
-ARCHIVO_JSON = "productos.json"
-ARCHIVO_ERRORES = "errores.log"
+def conectar():
+    """Crea y retorna una conexión a la base de datos."""
+    return sqlite3.connect(DB_NAME)
 
-#-------------LOG DE ERRORES EN TXT (.log) ----------------
-def registrar_error(mensaje:str) -> None:
-    """
-    Crea un registro de errores en archivo .log
-    """
-    ahora = datetime.now().strftime("%Y-%m-%d %H:%M:%S") #2026-06-17
-    linea = f"[{ahora}] {mensaje}\n"
+def crear_tabla():
+    """Crea la tabla productos si no existe."""
+    conexion = conectar()
+    cursor = conexion.cursor()
+    # Ejecutamos código SQL para crear la tabla con los requerimientos pedidos
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS productos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nombre TEXT NOT NULL,
+            descripcion TEXT,
+            cantidad INTEGER NOT NULL,
+            precio REAL NOT NULL,
+            categoria TEXT
+        )
+    ''')
+    conexion.commit()
+    conexion.close()
 
-    try:
-        with open (ARCHIVO_ERRORES, "a", encoding="utf-8") as archivo:
-            archivo.write(linea)
-    except Exception as e:
-        print(f"No se pudo escribir en el log: {linea}")
-        print (f"El error es {e}")
+def ejecutar_consulta(query, parametros=()):
+    """Ejecuta consultas que modifican datos (INSERT, UPDATE, DELETE)."""
+    conexion = conectar()
+    cursor = conexion.cursor()
+    cursor.execute(query, parametros)
+    conexion.commit()
+    conexion.close()
 
-def guardar_json(productos: list) -> bool:
-    """
-    Sobrescribe el archivo JSON con la lista de productos.
-    El archivo queda asi:
-    [{}, {}, {}]
-    """
-    try:
-        with open (ARCHIVO_JSON, "w",encoding="utf-8") as archivo:
-            json.dump(productos, archivo,indent=4, ensure_ascii=False)
-        return True
-    except PermissionError:
-        msg = f"Sin permisos para escribir '{ARCHIVO_JSON}'"
-        print(f" {msg}")
-        registrar_error (msg)
-        return False
-
-def cargar_json() -> list:
-    """
-    Lee el archivo json y devuelve la lista de productos
-    """
-
-    if not os.path.exists(ARCHIVO_JSON):
-        return []
-    
-    try:
-        with open (ARCHIVO_JSON, "r", encoding="utf-8") as archivo:
-            datos = json.load(archivo)
-        return datos
-    except json.JSONDecodeError as e:
-        msg = f"Archivo {ARCHIVO_JSON} corrupto: {e}"
-        print(f" {msg}")
-        registrar_error(msg)
-        return []
+def ejecutar_lectura(query, parametros=()):
+    """Ejecuta consultas para leer datos (SELECT) y retorna los resultados."""
+    conexion = conectar()
+    cursor = conexion.cursor()
+    cursor.execute(query, parametros)
+    resultados = cursor.fetchall()
+    conexion.close()
+    return resultados
